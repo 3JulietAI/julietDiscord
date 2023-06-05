@@ -222,7 +222,7 @@ Here is the full code:
           user_query = message.content[8:]
 
           # Fetch previous messages from memory
-          previous_messages = messages[50:]
+          previous_messages = messages[-50:]
 
           # Generate the message to send to the API
           prompt = [

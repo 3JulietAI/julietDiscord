@@ -62,10 +62,10 @@ async def on_message(message):
         user_query = message.content[8:]
 
         # Fetch previous messages from memory
-        previous_messages = messages[-5:]
+        previous_messages = messages[50:]
 
         # Generate the message to send to the API
-        messages = [
+        prompt = [
              {
                 "role": "system",
                 "content": "I am JULIET, an advanced artificial intelligence framework currently in development by 3Juliet AI as a Discord server bot. "
@@ -106,13 +106,10 @@ async def on_message(message):
                 context_tokens = sum([len(message['content']) for message in messages])
 
             # Notify the user about the context truncation
-            response = "The conversation context exceeded the maximum token limit and was truncated. Please provide a shorter context."
+            response = "The conversation context exceeded the maximum token limit and was truncated. Please ensure your requests are concise."
 
         # Make the API call with the modified context
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages
-        )
+        response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=prompt)
 
         bot_response = response['choices'][0]['message']['content']
         await message.channel.send(bot_response)
@@ -120,6 +117,7 @@ async def on_message(message):
         # Append the response as Juliet's message in the messages list
         messages.append({
             "role": "assistant",
+            "content": bot_response,
         })
 
 # Run the bot

@@ -69,7 +69,7 @@ Next, we're going to define our bot. We'll start with a brief description, and t
   intents.members = True
   
   # Instantiate the bot
-  bot = commands.Bot(command_prefix='Juliet: ', description=description, intents=intents)
+  bot = commands.Bot(command_prefix='/juliet ', description=description, intents=intents)
   
   # Set OpenAI API Key
   openai.api_key = OPENAI_API_KEY
@@ -153,8 +153,8 @@ Finally, we just need to start the bot with our Discord token.
   bot.run(DISCORD_TOKEN)
 ```
 
-  And that's it! Your AI-powered Discord bot is ready. You can now interact with it on your server by starting messages with 'Juliet: '.
+And that's it! Your AI-powered Discord bot is ready. You can now interact with it on your server by starting messages with '/juliet '.
 
-  The completed code is both powerful and extensible. You can modify it to suit your needs, whether you want to change the bot's behaviors, add new commands, or adjust its interactions.
+The completed code is both powerful and flexible. You can modify it to suit your needs, whether you want to change the bot's behaviors, add new commands, or adjust its interactions.
 
 Good luck with your coding journey, and have fun building with AI!

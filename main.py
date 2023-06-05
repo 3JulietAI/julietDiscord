@@ -21,7 +21,7 @@ intents = discord.Intents.all()
 intents.members = True
 
 # Instantiate the bot
-bot = commands.Bot(command_prefix='Juliet: ', description=description, intents=intents)
+bot = commands.Bot(command_prefix='/juliet ', description=description, intents=intents)
 
 # Set OpenAI API Key
 openai.api_key = OPENAI_API_KEY
@@ -49,6 +49,7 @@ async def on_message(message):
 
     # Store message in memory
     messages.append({
+        "role": "user",
         "channel_id": str(message.channel.id),
         "content": message.content,
         "timestamp": str(message.created_at),
@@ -56,8 +57,8 @@ async def on_message(message):
         "user_name": message.author.name
     })
 
-    # Only reply to messages that start with "Juliet: "
-    if message.content.startswith('Juliet: '):
+    # Only reply to messages that start with "/juliet"
+    if message.content.startswith('/juliet '):
         user_query = message.content[8:]
 
         # Fetch previous messages from memory

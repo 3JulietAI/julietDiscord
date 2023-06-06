@@ -4,7 +4,7 @@ import openai
 import redis
 from uuid import uuid4
 from dataclasses import dataclass
-
+import utils
 from discord.ext import commands
 from dotenv import load_dotenv
 

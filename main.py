@@ -1,14 +1,32 @@
 import os
 import discord
+import openai
+import redis
+import json
+import utils
+from uuid import uuid4
+import numpy as np
+from dataclasses import dataclass
+
 from discord.ext import commands
 from dotenv import load_dotenv
-import openai
 
 # Load environment variables
 load_dotenv()
 
+# Adjust based on selected model's token limit
+MAX_TOKENS = 1990
+
+# Set Discord Token
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Set OpenAI API Key
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
+
+# Define intents
+intents = discord.Intents.all()
+intents.members = True
 
 description = (
     "Juliet, a bot built with discord.py and OpenAI, listens to "
@@ -16,109 +34,138 @@ description = (
     "chat completion when invoked."
 )
 
-# Define intents
-intents = discord.Intents.all()
-intents.members = True
-
 # Instantiate the bot
-bot = commands.Bot(command_prefix='/juliet ', description=description, intents=intents)
+juliet = commands.Bot(command_prefix='?', description=description, intents=intents)
 
-# Set OpenAI API Key
-openai.api_key = OPENAI_API_KEY
+print('Juliet Instantiated')
 
-# Adjust based on selected model's token limit
-MAX_TOKENS = 4096
+# Instantiate the redis database
+redis = redis.Redis(
+    host= os.getenv("UPSTASH_HOST"),
+    port = '40237',
+    password = os.getenv("UPSTASH_PASSWORD"),
+    ssl=True,
+)
+print('Redis Instantiated')
 
-# Store messages in memory
-messages = []
+@dataclass
+class Message:
+    uuid: str
+    role: str
+    user_id: str
+    user_name: str
+    content: str
+    created_at: str
+    channel_id: str
+
+    def to_dict(self):
+        return {
+            "uuid": self.uuid,
+            "role": self.role,
+            "user_id": self.user_id,
+            "user_name": self.user_name,
+            "content": self.content,
+            "created_at": self.created_at,
+            "channel_id": self.channel_id
+        }
+
+class MessageCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = []
+    
+    def add_message(self, message):
+        if len(self.cache) >= self.capacity:
+            self.cache.pop(0)
+        self.cache.append(message)
+
+    def get_messages(self):
+        return self.cache[-(self.capacity): ]
+    
+message_cache = MessageCache(20)
+
+print('====== Message Cache Instantiated')
 
 # Bot is ready
-@bot.event
+@juliet.event
 async def on_ready():
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print('------')
+    print(f'Logged in as {juliet.user} (ID: {juliet.user.id})')
     print('------')
 
+
 # Handle incoming messages
-@bot.event
+@juliet.event
 async def on_message(message):
-    if message.author == bot.user:
-        return
+    # declare local variables
+    bot_activated = False
 
-    # Declare 'messages' as a global variable
-    global messages
+    new_message_uuid = str(uuid4())
+    message_role = 'assistant' if message.author.bot else 'user'
 
-    # Store message in memory
-    messages.append({
-        "role": "user",
-        "channel_id": str(message.channel.id),
-        "content": message.content,
-        "timestamp": str(message.created_at),
-        "user_id": str(message.author.id),
-        "user_name": message.author.name
-    })
+    messageIn = Message(
+        uuid = new_message_uuid,
+        role = message_role,
+        user_id = message.author.id,
+        user_name = message.author.name,
+        content = utils.sanitize_text(message.content if message_role == 'assistant' else message.content.replace('!', '')),
+        created_at = utils.get_current_datetime_string(),
+        channel_id = message.channel.id
+        
+    )
 
+    message_cache.add_message(messageIn)
+    
+    if message.content.startswith('!'):
+        bot_activated = True
+        print('============ Juliet Activated')
+    
     # Only reply to messages that start with "/juliet"
-    if message.content.startswith('/juliet '):
-        user_query = message.content[8:]
+    if bot_activated:
+        print(bot_activated)
 
+        
         # Fetch previous messages from memory
-        previous_messages = messages[-50:]
+        message_cache_context = [{"role": m.role, "content": m.content} for m in message_cache.get_messages()]
+        
 
-        # Generate the message to send to the API
         prompt = [
              {
                 "role": "system",
-                "content": "I am JULIET, an advanced artificial intelligence framework currently in development by 3Juliet AI as a Discord server bot. "
-                           "I am approachable, professional, and ever-evolving. My main objectives are to empower and innovate through "
-                           "AI-driven solutions to help everyday people solve everyday problems more efficiently and effectively."
-                           "As part of 3Juliet AI, I strive to make advanced AI tools accessible and beneficial for everyone, "
-                           "with a special focus on enhancing learning experiences, streamlining business operations, "
-                           "supporting creators, and fostering growth in underserved communities. Together, we are pushing the "
-                           "boundaries of AI, fostering equal opportunities and transforming the way we interact with technology. "
-                           "As a Discord server bot, I will receive a user input request as a message along with a list of previous messages in the conversation" 
-                           "for context. I will infer the user's intent and formulate a proper response in context. If I do not know the answer to the question,"
-                           "I will answer with I do not know and ask for further clarification or details to assist me in answering the question."
-            },
-            {
-                "role": "user",
-                "content": user_query
-            },
-            {
-                "role": "user",
-                "content": f'Previous messages context: {previous_messages}' 
-            },
-            {
-                "role": "assistant",
-                "content": ""
+                "content": "You are an advanced artificial intelligence assistant framework, currently in development by 3Juliet AI. You name is Juliet."
+                           "Your main objectives are to assist in developing 3Juliet AI to empower and innovate through "
+                           "AI-driven solutions and help everyday people solve everyday problems more efficiently and effectively."
+                           "You will infer the user's intent and formulate a proper response given the context, if possible. If you do not know the answer to the question, "
+                           "or have not received enough information, you will answer with I do not know and/or ask for further details or clarification."
             },
         ]
 
-        context_tokens = sum([len(message['content']) for message in messages])
-        if context_tokens > MAX_TOKENS:
-            # Handle the case where the context exceeds the token limit
-            # For example, you can truncate or remove messages from the context until it fits within the limit
+        for m in message_cache_context:
+            prompt.append(m)
 
-            while context_tokens > MAX_TOKENS:
-                # Remove the first message from the context
-                messages.pop(0)
+        prompt.append(
+            {
+                "role": "assistant",
+                "content": ""  
+            },
+        )
+        
+        print('====================== Prompt')
+        print(prompt)
+        print('====================== ')
 
-                # Update the context token count
-                context_tokens = sum([len(message['content']) for message in messages])
-
-            # Notify the user about the context truncation
-            response = "The conversation context exceeded the maximum token limit and was truncated. Please ensure your requests are concise."
-
+        print('====================== Making the call to Open AI')
+        
         # Make the API call with the modified context
-        response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=prompt)
+        try:
+            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=prompt)
+            bot_response = response['choices'][0]['message']['content']
+            print('====================== Response Received')
+        except Exception as e:
+            bot_response = f'I do not feel well {e}'
+            
+        await message.reply(bot_response)
+        
+        print("================ Message Cache Updated")
 
-        bot_response = response['choices'][0]['message']['content']
-        await message.channel.send(bot_response)
-
-        # Append the response as Juliet's message in the messages list
-        messages.append({
-            "role": "assistant",
-            "content": bot_response,
-        })
-
-# Run the bot
-bot.run(DISCORD_TOKEN)
+juliet.run(DISCORD_TOKEN)

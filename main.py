@@ -2,10 +2,7 @@ import os
 import discord
 import openai
 import redis
-import json
-import utils
 from uuid import uuid4
-import numpy as np
 from dataclasses import dataclass
 
 from discord.ext import commands

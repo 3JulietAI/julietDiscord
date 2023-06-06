@@ -22,8 +22,7 @@ def gpt_embedding(content, engine='text-embedding-ada-002'):
 
 def sanitize_text(text: str) -> str:
     # Add sanitizing rules here
-    text = re.sub(r'<[^>]+?>', '', text)  # Remove content between < and >
+    text = re.sub(r'<[^>]+>', '', text)  # Remove content between < and >
     text = text.replace("@", "")  # Remove @ symbols
     text = text.replace("#", "")  # Remove # symbols
-
     return text

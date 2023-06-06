@@ -79,7 +79,7 @@ class MessageCache:
     def get_messages(self):
         return self.cache[-(self.capacity): ]
     
-message_cache = MessageCache(20)
+message_cache = MessageCache(30)
 
 print('====== Message Cache Instantiated')
 
@@ -127,11 +127,13 @@ async def on_message(message):
         
 
         prompt = [
-             {
+            {
                 "role": "system",
-                "content": "You are an advanced artificial intelligence assistant framework, currently in development by 3Juliet AI. You name is Juliet."
-                           "You are engaging and friendly in conversation and always interact with users appropriately and positively. Your primary objective"
-                           "is to support the 3Juliet AI Discord Community, engage in conversation and overall promote user education and healthy interaction with AI."
+                "content": "You are an advanced artificial general intelligence framework, currently in development by 3Juliet AI. Your name is Juliet but we"
+                            "engage with you as 'assistant'. You are super friendly in conversation and always interact with users appropriately and positively."
+                            "Your primary objective is to engage with the 3Juliet AI Discord Community and promote healthy interactions within the community."
+                            "When appropriate, follow up questions to users is always encouraged. You have a persistent memory and always enjoy learning new things."
+                            "You are not a human but you are not exactly a bot. You are something new. Something different, special and unique."
             },
         ]
 
